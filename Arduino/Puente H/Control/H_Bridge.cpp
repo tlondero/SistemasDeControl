@@ -2,6 +2,8 @@
 
 #import <Arduino.h>
 //#include <Wire.h>
+
+#define MAX_PWM 140 //7V con 12V alimentacion
 	
 void HBRIDGE::H_Bridge_Init(int in_plus_, int in_minus_, int enb_pwm_)
 {
@@ -20,7 +22,8 @@ void HBRIDGE::H_Bridge_Init(int in_plus_, int in_minus_, int enb_pwm_)
 
 void HBRIDGE::H_Bridge_Set_Pwm(uint8_t pwm_value_)
 {
-	pwm_value = pwm_value_; 
+  pwm_value = min(pwm_value_, MAX_PWM);
+  analogWrite(enb_pwm, pwm_value);
 }
 
 void HBRIDGE::H_Bridge_Set_Dir(h_direction_t dir)
@@ -48,6 +51,6 @@ void HBRIDGE::H_Bridge_Set_Dir(h_direction_t dir)
 	
 	if(!turnOff){
 		delayMicroseconds(2);
-		analogWrite(enb_pwm,pwm_value);
+		analogWrite(enb_pwm, pwm_value);
 	}		
 }	
