@@ -27,7 +27,9 @@ void HBRIDGE::H_Bridge_Set_Pwm(uint8_t pwm_value_)
 }
 
 void HBRIDGE::H_Bridge_Set_Dir(h_direction_t dir)
-{
+{	static h_direction_t old_dir=H_OFF;
+	if(old_dir != dir){
+		old_dir=dir;
 	bool turnOff = false;
 	analogWrite(enb_pwm, 0);
 	delayMicroseconds(2);
@@ -52,5 +54,6 @@ void HBRIDGE::H_Bridge_Set_Dir(h_direction_t dir)
 	if(!turnOff){
 		delayMicroseconds(2);
 		analogWrite(enb_pwm, pwm_value);
-	}		
+	}
+	}	
 }	
