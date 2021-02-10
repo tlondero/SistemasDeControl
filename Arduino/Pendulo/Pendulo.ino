@@ -292,6 +292,5 @@ void loop() {
         } else {
           analogWrite(LED_PIN, 0);
         }
-        }
     }
 }
