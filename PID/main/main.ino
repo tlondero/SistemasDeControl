@@ -1,15 +1,37 @@
 #include "angle.h"
 #include "H_Bridge.h"
-//#define PC_DEBUG
-#define VALUE 70
-#define SETPOINT (0)
+#define PC_DEBUG
+#define VALUE 55
+#define SETPOINT (45)
+
+typedef float REAL;
+#define NPOLE 4
+#define NZERO 4
+REAL acoeff[]={0.9634534510506384,-3.8896837377884457,5.888999744280504,-3.962769417093502,1};
+REAL bcoeff[]={1,4,6,4,1};
+REAL gain=395557945.0626531;
+REAL xv[]={0,0,0,0,0};
+REAL yv[]={0,0,0,0,0};
+
+REAL applyfilter(REAL v)
+{
+  int i;
+  REAL out=0;
+  for (i=0; i<NZERO; i++) {xv[i]=xv[i+1];}
+  xv[NZERO] = v/gain;
+  for (i=0; i<NPOLE; i++) {yv[i]=yv[i+1];}
+  for (i=0; i<=NZERO; i++) {out+=xv[i]*bcoeff[i];}
+  for (i=0; i<NPOLE; i++) {out-=yv[i]*acoeff[i];}
+  yv[NPOLE]=out;
+  return out;
+}
 
 float computePID(float inp);
 //PID constants
 //double kp = 0.075;//esto es bueno para -90 ¬ 0
-double kp = 0.05;
-double ki = 0.0002;
-double kd = 0.5;
+double kp = 0.7;
+double ki = 0.00001;
+double kd = 0.01;
 
 //double kp = 0.05;
 //double ki = 0.0002; andan piola para -45 grados
@@ -20,6 +42,7 @@ unsigned long currentTime, previousTime;
 float elapsedTime;
 float error;
 float lastError;
+float filteredError;
 float input, output, setPoint;
 float cumError, rateError, cumRateError;
 bool first_time;
@@ -57,8 +80,8 @@ void loop(void)
     angle=get_angle()*180/PI;//read angle in degrees
     output = computePID(angle);
     #ifdef PC_DEBUG
-      Serial.print("Output del PID: ");
-      Serial.println(output);
+      Serial.print("Angulo: ");
+      Serial.println(angle);
     #endif
     if((int)output > VALUE){
       output=VALUE;
@@ -152,19 +175,20 @@ float computePID(float inp){
     cumError += error * elapsedTime;               // compute integral with anti windup
   }
 
-  rateError = (error - lastError)/elapsedTime;
+  filteredError = applyfilter(error);
+  rateError = (filteredError - lastError)/elapsedTime;
   
   double out = kp*error + ki*cumError + kd*rateError;                //PID output          
   #ifdef PC_DEBUG
-    Serial.print("Proportional: ");
-    Serial.println((kp*error));
+    //Serial.print("Proportional: ");
+    //Serial.println((kp*error));
     Serial.print("Integral: ");
     Serial.println((ki*cumError));
     Serial.print("Derivative: ");
     Serial.println((kd*rateError));
    #endif    
 
-  lastError = error;                                //remember current error
+  lastError = filteredError;                                //remember current error
   previousTime = currentTime;                        //remember current time
 
   return out;                                        //have function return the PID output
