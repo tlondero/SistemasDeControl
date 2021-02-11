@@ -30,7 +30,7 @@ float get_angle(void)
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
     float angle = atan2(a.acceleration.y, a.acceleration.x);
-    if(!((old_angle > (int) (angle*180/PI)-2) && (old_angle <(int) (angle*180/PI)+2))){
+    if(!((old_angle > (int) (angle*180/PI)) && (old_angle <(int) (angle*180/PI)))){
       old_angle=(int)  (angle*180/PI);
 #ifdef PC_DEBUG
     Serial.print("Angulo: ");

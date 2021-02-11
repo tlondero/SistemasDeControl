@@ -1,14 +1,11 @@
 #include "angle.h"
 #include "H_Bridge.h"
 #define PC_DEBUG
-#define VALUE 40
-#define SETPOINT (-45)
 float computePID(float inp);
 //PID constants
-//double kp = 0.3;//esto es bueno para -90 ¬ 0
-double kp = 0.3;
-double ki = 0.0015;
-double kd = 0.7;
+double kp = 0.5;//1;
+double ki = 0.001;
+double kd = 1;
  HBRIDGE hb;
 unsigned long currentTime, previousTime;
 float elapsedTime;
@@ -20,7 +17,7 @@ float cumError, rateError;
 void setup(void)
 {
   first_time=true;
-    setPoint = SETPOINT;  
+    setPoint = 90;  
 #ifdef PC_DEBUG
     Serial.begin(115200);  
 #endif
@@ -45,17 +42,12 @@ void loop(void)
   static float angle=0.0f;
 if(!stop_bool){
     angle=get_angle()*180/PI;//read angle in degrees
-
+        delay(1);
         output = computePID(angle);
-        output=output/4;
-        if(output>VALUE){
-          output=VALUE;}
-          else if(output < -VALUE){
-            output=-VALUE;//50 es un buen numero para cuadrante 4
-            }     
-      if(output > 0){//primer y cuarto cuadrante
+        output=output*140/260;           
+      if((angle > -90) && (angle< 90)){//primer y cuarto cuadrante
         hb.H_Bridge_Set_Dir(H_FOWARD);//control the motor based on PID value
-        
+
         int aux=(int)abs(output);
 #ifdef PC_DEBUG
         if(!((int)aux > ((int)old_aux-2) &&((int)aux < ((int)old_aux+2)) )){
@@ -65,21 +57,29 @@ if(!stop_bool){
         Serial.println((int)aux);
         }
 #endif
+        if(output > 0){
         if(aux>120)
         {
                  hb.H_Bridge_Set_Pwm(120);  //3, 5, 6, 9, 10, 11
           }
-/*          else if(aux<20){
-                 hb.H_Bridge_Set_Pwm(0);  //3, 5, 6, 9, 10, 11
-            }*/
+          else if(aux<20){
+                 hb.H_Bridge_Set_Pwm(00);  //3, 5, 6, 9, 10, 11
+            }
           else{
        hb.H_Bridge_Set_Pwm((int)aux);  //3, 5, 6, 9, 10, 11
           }
-        
+        }
+        else{
+//          hb.H_Bridge_Set_Pwm(0);
+          }
       }
+
+
+      
       else{
           hb.H_Bridge_Set_Dir(H_BACKWARD);//control the motor based on PID value
         int aux=(int)abs(output);
+
 #ifdef PC_DEBUG
                 if(!((int)aux > ((int)old_aux-2) &&((int)aux < ((int)old_aux+2)) )){
         old_aux=aux;
@@ -88,16 +88,21 @@ if(!stop_bool){
         Serial.println((int)aux);
         }
 #endif
+        if(output > 0){
         if(aux>120)
         {
                  hb.H_Bridge_Set_Pwm(120);  //3, 5, 6, 9, 10, 11
           }
-                   /* else if(aux<20){
+                    else if(aux<20){
                  hb.H_Bridge_Set_Pwm(0);  //3, 5, 6, 9, 10, 11
-            }*/
+            }
           else{
             hb.H_Bridge_Set_Pwm((int)aux);  //3, 5, 6, 9, 10, 11
        }
+       }
+       else{
+                //  hb.H_Bridge_Set_Pwm(0);
+        }
       
 }
 #ifdef PC_DEBUG
