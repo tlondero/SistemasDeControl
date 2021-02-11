@@ -33,8 +33,8 @@ float get_angle(void)
     if(!((old_angle > (int) (angle*180/PI)-2) && (old_angle <(int) (angle*180/PI)+2))){
       old_angle=(int)  (angle*180/PI);
 #ifdef PC_DEBUG
-    Serial.print("Angulo: ");
-    Serial.println((int) (angle*180/PI));
+    //Serial.print("Angulo: ");
+    //Serial.println((int) (angle*180/PI));
 #endif
     }
     return angle;
