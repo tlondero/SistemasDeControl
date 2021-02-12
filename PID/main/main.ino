@@ -1,8 +1,8 @@
 #include "angle.h"
 #include "H_Bridge.h"
-#define PC_DEBUG
+//#define PC_DEBUG
 #define VALUE 55
-#define SETPOINT (45)
+#define SETPOINT 10//(-150)
 
 typedef float REAL;
 #define NPOLE 4
@@ -29,13 +29,13 @@ REAL applyfilter(REAL v)
 float computePID(float inp);
 //PID constants
 //double kp = 0.075;//esto es bueno para -90 ¬ 0
-double kp = 0.7;
-double ki = 0.00001;
-double kd = 0.01;
-
-//double kp = 0.05;
-//double ki = 0.0002; andan piola para -45 grados
+//double kp = 0.1;
+//double ki = 0.00007;
 //double kd = 0.5;
+
+double kp = 0.05;
+double ki = 0.0002; //andan piola para -45 grados
+double kd = 0.5;
 
 HBRIDGE hb;
 unsigned long currentTime, previousTime;
@@ -53,9 +53,9 @@ void setup(void)
 {
   first_time=true;
   setPoint = SETPOINT;  
-  #ifdef PC_DEBUG
+
   Serial.begin(115200);  
-  #endif
+
   init_mpu();
   hb.H_Bridge_Init(8, 7, 3);    //Motor Plus, Minus and PWM
   #ifdef PC_DEBUG
@@ -65,6 +65,7 @@ void setup(void)
       rdy=true;
       delay(500);
       while(Serial.available()) {Serial.read();}
+      Serial.println("Prendido");
     }
   }
   #endif
@@ -79,10 +80,6 @@ void loop(void)
     
     angle=get_angle()*180/PI;//read angle in degrees
     output = computePID(angle);
-    #ifdef PC_DEBUG
-      Serial.print("Angulo: ");
-      Serial.println(angle);
-    #endif
     if((int)output > VALUE){
       output=VALUE;
       clamped = true;
@@ -100,10 +97,10 @@ void loop(void)
     else{
       clamped = false;
     }
-    int aux=(int)abs(output);
+    int aux=(int)(abs(output));
     #ifdef PC_DEBUG
-      Serial.print("aux: ");
-      Serial.println((int)aux);
+      //Serial.print("aux: ");
+      //Serial.println((int)aux);
     #endif
     if(output > 0){//primer y cuarto cuadrante
       if(!goingFoward){
@@ -175,20 +172,33 @@ float computePID(float inp){
     cumError += error * elapsedTime;               // compute integral with anti windup
   }
 
-  filteredError = applyfilter(error);
-  rateError = (filteredError - lastError)/elapsedTime;
+  //filteredError = applyfilter(error);
+  //rateError = (filteredError - lastError)/elapsedTime;
+  if(inp < SETPOINT+7 && inp > SETPOINT-7){
+    rateError = (error - lastError)/elapsedTime;
+   // Serial.print("YAAASS");
+  }
+  else{
+    rateError = 0;
+  }
   
   double out = kp*error + ki*cumError + kd*rateError;                //PID output          
   #ifdef PC_DEBUG
     //Serial.print("Proportional: ");
     //Serial.println((kp*error));
-    Serial.print("Integral: ");
-    Serial.println((ki*cumError));
-    Serial.print("Derivative: ");
-    Serial.println((kd*rateError));
+    //Serial.print("Integral: ");
+    //Serial.println((ki*cumError));
+    //Serial.print("Derivative: ");
+    //Serial.println((kd*rateError));
    #endif    
-
-  lastError = filteredError;                                //remember current error
+/*
+Serial.print("Deriv: ");
+Serial.print(rateError);
+Serial.print(" Angle: ");
+Serial.print(inp);
+Serial.print("\r\n");
+*/
+  lastError = error;                                //remember current error
   previousTime = currentTime;                        //remember current time
 
   return out;                                        //have function return the PID output

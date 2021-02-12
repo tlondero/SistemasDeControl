@@ -7,6 +7,7 @@
 Adafruit_MPU6050 mpu;
 
 float angle;
+float wx,wy,wz;
 void setup(void) {
   Serial.begin(115200);
   
@@ -32,10 +33,20 @@ void loop() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-  Serial.println("Angle");
-  angle = atan2(a.acceleration.y, a.acceleration.x)*180/PI
+  Serial.print("Angle: ");
+  angle = atan2(a.acceleration.y, a.acceleration.x)*180/PI;
   Serial.println(angle);
-
+  Serial.println("Gyroscope readings: ");
+  Serial.print(" Wheading : ");
+  wx=g.gyro.heading;
+   Serial.println(wx);
+     Serial.print(" Wpitch : ");
+  wy=g.gyro.pitch;
+   Serial.println(wy);
+     Serial.print(" Wroll : ");
+  wz=g.gyro.roll;
+   Serial.println(wz);
+  
   Serial.println("");
   delay(500);
 }
