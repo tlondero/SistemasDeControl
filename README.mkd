@@ -1,0 +1,2 @@
+Hola!
+Para poder compilar y subir el proyecto hay que copiar la carpeta "Arduino-PID-Library-master" donde estan las demás librerias (libs) descargadas de Arduino. Por lo general puede estar bajo *Documentos* o tal vez en *Archivos de Programa*

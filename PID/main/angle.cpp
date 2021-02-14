@@ -5,7 +5,7 @@ static Adafruit_MPU6050 mpu;
 void init_mpu(void)
 {
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-    mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
+    mpu.setFilterBandwidth(MPU6050_BAND_94_HZ);
 
 #ifdef PC_DEBUG
     while (!Serial)

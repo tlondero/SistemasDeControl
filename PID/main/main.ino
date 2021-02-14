@@ -1,195 +1,93 @@
 #include "angle.h"
 #include "H_Bridge.h"
+#include <PID_v1.h>
+//#include <PID_AutoTune_v0.h>
 #define PC_DEBUG
 #define VALUE 55
-#define SETPOINT (45)
+#define SETPOINT 90
 
-typedef float REAL;
-#define NPOLE 4
-#define NZERO 4
-REAL acoeff[]={0.9634534510506384,-3.8896837377884457,5.888999744280504,-3.962769417093502,1};
-REAL bcoeff[]={1,4,6,4,1};
-REAL gain=395557945.0626531;
-REAL xv[]={0,0,0,0,0};
-REAL yv[]={0,0,0,0,0};
-
-REAL applyfilter(REAL v)
-{
-  int i;
-  REAL out=0;
-  for (i=0; i<NZERO; i++) {xv[i]=xv[i+1];}
-  xv[NZERO] = v/gain;
-  for (i=0; i<NPOLE; i++) {yv[i]=yv[i+1];}
-  for (i=0; i<=NZERO; i++) {out+=xv[i]*bcoeff[i];}
-  for (i=0; i<NPOLE; i++) {out-=yv[i]*acoeff[i];}
-  yv[NPOLE]=out;
-  return out;
-}
-
-float computePID(float inp);
-//PID constants
-//double kp = 0.075;//esto es bueno para -90 ¬ 0
-double kp = 0.7;
-double ki = 0.00001;
-double kd = 0.01;
-
-//double kp = 0.05;
-//double ki = 0.0002; andan piola para -45 grados
-//double kd = 0.5;
+double kp = 10;
+double ki = 0; //0.00001;
+double kd = 5; //0.01;
 
 HBRIDGE hb;
-unsigned long currentTime, previousTime;
-float elapsedTime;
-float error;
-float lastError;
-float filteredError;
 float input, output, setPoint;
-float cumError, rateError, cumRateError;
-bool first_time;
-bool goingFoward;
 bool clamped;
- 
+bool stop_bool;
+
+double Setpoint, Input, Output;
+//                                    Kp, Ki, Kd
+//PID myPID(&Input, &Output, &Setpoint, 1,0,0 , DIRECT);
+//PID myPID(&Input, &Output, &Setpoint, 2,1.1,4, DIRECT);
+PID myPID(&Input, &Output, &Setpoint, 2, 1, 3.5, DIRECT);
+
+//PID_ATune aTune(&Input, &Output);
+#define NUM_SAMPLES 50
+double avg_buffer[NUM_SAMPLES];
+int pointer;
+
+void add_to_buffer(double angle)
+{
+  avg_buffer[pointer % NUM_SAMPLES] = angle;
+  pointer++;
+}
+
+double get_filt_out(double angle)
+{
+  add_to_buffer(angle);
+  double aux = 0;
+  for (int i = 0; i < NUM_SAMPLES; i++)
+  {
+    aux += avg_buffer[i];
+  }
+  return aux / (double)NUM_SAMPLES;
+}
+
+bool goingFoward;
 void setup(void)
 {
-  first_time=true;
-  setPoint = SETPOINT;  
-  #ifdef PC_DEBUG
-  Serial.begin(115200);  
-  #endif
+  Setpoint = SETPOINT;
+  Serial.begin(115200);
   init_mpu();
-  hb.H_Bridge_Init(8, 7, 3);    //Motor Plus, Minus and PWM
-  #ifdef PC_DEBUG
-  bool rdy=false;
-    while(!(rdy)){
-    if(Serial.available()>0){
-      rdy=true;
-      delay(500);
-      while(Serial.available()) {Serial.read();}
-    }
-  }
-  #endif
+  hb.H_Bridge_Init(8, 7, 3); //Motor Plus, Minus and PWM
+  stop_bool = false;
+  myPID.SetMode(MANUAL); //AUTOMATIC);
+  myPID.SetOutputLimits(-VALUE, VALUE);
+  goingFoward = true;
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
 }
 
 void loop(void)
 {
-  static int old_aux=0;
-  static bool stop_bool=false;
-  static float angle=0.0f;
-  if(!stop_bool){
-    
-    angle=get_angle()*180/PI;//read angle in degrees
-    output = computePID(angle);
-    #ifdef PC_DEBUG
-      Serial.print("Angulo: ");
-      Serial.println(angle);
-    #endif
-    if((int)output > VALUE){
-      output=VALUE;
-      clamped = true;
-      #ifdef PC_DEBUG
-      Serial.println("Acotado a VALUE");
-      #endif
-    }
-    else if(output < -VALUE){
-      output=-VALUE;//50 es un buen numero para cuadrante 4
-      clamped = true;
-      #ifdef PC_DEBUG
-      Serial.println("Acotado a -VALUE");
-      #endif
-    }
-    else{
-      clamped = false;
-    }
-    int aux=(int)abs(output);
-    #ifdef PC_DEBUG
-      Serial.print("aux: ");
-      Serial.println((int)aux);
-    #endif
-    if(output > 0){//primer y cuarto cuadrante
-      if(!goingFoward){
-        hb.H_Bridge_Set_Dir(H_FOWARD);//control the motor based on PID value
-        goingFoward = true;
-        #ifdef PC_DEBUG
-        if(!((int)aux > ((int)old_aux-2) &&((int)aux < ((int)old_aux+2)) )){
-          old_aux=aux;
-          Serial.print("Direction FORWARD\r\n");
-        }
-        #endif
-      }
-    }
-    else{
-      if(goingFoward){
-        hb.H_Bridge_Set_Dir(H_BACKWARD);//control the motor based on PID value
-        goingFoward = false;
-        #ifdef PC_DEBUG
-        if(!((int)aux > ((int)old_aux-2) &&((int)aux < ((int)old_aux+2)) )){
-          old_aux=aux;
-          Serial.print("Direction BACKWARD\r\n");
-        }
-        #endif
-      }
-    }
-    if(aux>VALUE){
-      hb.H_Bridge_Set_Pwm(VALUE);  //3, 5, 6, 9, 10, 11
-    }
-  /*else if(aux<20){
-    hb.H_Bridge_Set_Pwm(0);  //3, 5, 6, 9, 10, 11
-  }*/
-    else{
-      hb.H_Bridge_Set_Pwm((int)aux);  //3, 5, 6, 9, 10, 11
-    }
-    #ifdef PC_DEBUG
-    if(Serial.available()>0){
-      stop_bool=true;
-      hb.H_Bridge_Set_Dir(H_OFF);
-      Serial.println("Apagado");
-      delay(500);
-      while(Serial.available()) {Serial.read();}
-    }
-    #endif   
+  static float angle = 0.0f;
+  angle = get_filt_out(get_angle() * 180 / PI); //read angle in degrees
+  Input = angle;
+
+  myPID.Compute();
+  Serial.print("Output:");
+  Serial.print(Output);
+  Serial.print(",");
+  //output = computePID(angle);
+
+  Serial.print("Angulo:");
+  Serial.print(angle);
+  Serial.print(",");
+  Serial.print("direction:");
+  int static dir = 1;
+  uint8_t aux = (uint8_t)abs(Output);
+  if (Output > 0)
+  {
+    hb.H_Bridge_Set_Dir(H_FOWARD);
+    digitalWrite(13, HIGH);
+    dir = 20;
   }
-  #ifdef PC_DEBUG
-  if((stop_bool) && (Serial.available()>0)){
-    first_time=true;
-    stop_bool=false;
-    Serial.println("Prendido");
-    delay(500);
-    while(Serial.available()) {Serial.read();}
+  else
+  {
+    hb.H_Bridge_Set_Dir(H_BACKWARD);
+    digitalWrite(13, LOW);
+    dir = -20;
   }
-  #endif
+  hb.H_Bridge_Set_Pwm(aux);
+  Serial.println(dir);
 }
-
-float computePID(float inp){
-
-  if(first_time){
-    first_time=false;
-    cumError=0;
-    cumRateError=0;
-    previousTime=millis();
-  }     
-  currentTime = millis();                //get current time
-  elapsedTime = (float)(currentTime - previousTime);        //compute time elapsed from previous computation
-  
-  error = setPoint - inp;                        // determine error
-  if(!(clamped && ((goingFoward && error>0)||(!goingFoward && error <0)))){
-    cumError += error * elapsedTime;               // compute integral with anti windup
-  }
-
-  filteredError = applyfilter(error);
-  rateError = (filteredError - lastError)/elapsedTime;
-  
-  double out = kp*error + ki*cumError + kd*rateError;                //PID output          
-  #ifdef PC_DEBUG
-    //Serial.print("Proportional: ");
-    //Serial.println((kp*error));
-    Serial.print("Integral: ");
-    Serial.println((ki*cumError));
-    Serial.print("Derivative: ");
-    Serial.println((kd*rateError));
-   #endif    
-
-  lastError = filteredError;                                //remember current error
-  previousTime = currentTime;                        //remember current time
-
-  return out;                                        //have function return the PID output
-} 
