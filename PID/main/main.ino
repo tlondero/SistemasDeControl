@@ -51,7 +51,7 @@ void setup(void)
   init_mpu();
   hb.H_Bridge_Init(8, 7, 3); //Motor Plus, Minus and PWM
   stop_bool = false;
-  myPID.SetMode(MANUAL); //AUTOMATIC);
+  myPID.SetMode(AUTOMATIC); //AUTOMATIC);
   myPID.SetOutputLimits(-VALUE, VALUE);
   goingFoward = true;
   pinMode(13, OUTPUT);
