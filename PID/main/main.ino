@@ -6,9 +6,14 @@
 #define VALUE 55
 #define SETPOINT 90
 
-double kp = 10;
-double ki = 0; //0.00001;
-double kd = 5; //0.01;
+//Esto estaba de antes
+//double kp = 10;
+//double ki = 0; //0.00001;
+//double kd = 5; //0.01;
+
+double kp = 2;
+double ki = 1;
+double kd = 3.5;
 
 HBRIDGE hb;
 float input, output, setPoint;
@@ -19,7 +24,7 @@ double Setpoint, Input, Output;
 //                                    Kp, Ki, Kd
 //PID myPID(&Input, &Output, &Setpoint, 1,0,0 , DIRECT);
 //PID myPID(&Input, &Output, &Setpoint, 2,1.1,4, DIRECT);
-PID myPID(&Input, &Output, &Setpoint, 2, 1, 3.5, DIRECT);
+PID myPID(&Input, &Output, &Setpoint, kp, ki, kd, DIRECT);
 
 //PID_ATune aTune(&Input, &Output);
 #define NUM_SAMPLES 50
