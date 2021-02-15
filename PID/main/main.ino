@@ -1,17 +1,61 @@
 #include "angle.h"
 #include "H_Bridge.h"
 //#define PC_DEBUG
-#define VALUE 55
-#define SETPOINT 10//(-150)
+#define VALUE 40
+#define NUM_SAMPLES 75
+#define NPOLE 1
+#define NZERO 1
+#define SETPOINT 10
 
-typedef float REAL;
-#define NPOLE 4
-#define NZERO 4
-REAL acoeff[]={0.9634534510506384,-3.8896837377884457,5.888999744280504,-3.962769417093502,1};
-REAL bcoeff[]={1,4,6,4,1};
-REAL gain=395557945.0626531;
-REAL xv[]={0,0,0,0,0};
-REAL yv[]={0,0,0,0,0};
+float computePID(float inp);
+
+//double kp_1 = 0.090000;
+//double ki_1 = 0.000100; //abajo de 30
+//double kd_1 = 0.022500;
+/*
+double kp_1 = 0.060000;
+double ki_1 = 0.000070; //abajo de 30
+double kd_1 = 0.522500;
+
+double kp_2 = 0.045000;
+double ki_2 = 0.000050; //-30 a 30
+double kd_2 = 1.640000;
+
+double kp_3 = 0.020000;
+double ki_3 = 0.000050; //arriba de 30
+double kd_3 = 2.955500;
+*/
+double kp_1 = 0.00;
+double ki_1 = 0.00001; //abajo de 30
+double kd_1 = 0;
+
+double kp_2 = 0.001;
+double ki_2 = 0.00001; //-30 a 30
+double kd_2 = 0;
+
+double kp_3 = 0.5;
+double ki_3 = 0.00001; //arriba de 30
+double kd_3 = 0;
+HBRIDGE hb;
+unsigned long currentTime, previousTime;
+float elapsedTime;
+float error;
+float lastError;
+float filteredError;
+float input, output, setPoint;
+float cumError, rateError;
+bool first_time;
+bool goingFoward;
+bool clamped;
+double avg_buffer[NUM_SAMPLES];
+int pointer;
+bool changedSetpoint;
+typedef double REAL;
+REAL acoeff[]={-0.9964444320905282,1};
+REAL bcoeff[]={1,1};
+REAL gain=562.4980455786416;
+REAL xv[]={-45.0,-45.0};
+REAL yv[]={-45.0,-45.0};
 
 REAL applyfilter(REAL v)
 {
@@ -26,28 +70,22 @@ REAL applyfilter(REAL v)
   return out;
 }
 
-float computePID(float inp);
-//PID constants
-//double kp = 0.075;//esto es bueno para -90 ¬ 0
-//double kp = 0.1;
-//double ki = 0.00007;
-//double kd = 0.5;
+void add_to_buffer(double angle)
+{
+  avg_buffer[pointer % NUM_SAMPLES] = angle;
+  pointer++;
+}
 
-double kp = 0.05;
-double ki = 0.0002; //andan piola para -45 grados
-double kd = 0.5;
-
-HBRIDGE hb;
-unsigned long currentTime, previousTime;
-float elapsedTime;
-float error;
-float lastError;
-float filteredError;
-float input, output, setPoint;
-float cumError, rateError, cumRateError;
-bool first_time;
-bool goingFoward;
-bool clamped;
+double get_filt_out(double angle)
+{
+  add_to_buffer(angle);
+  double aux = 0;
+  for (int i = 0; i < NUM_SAMPLES; i++)
+  {
+    aux += avg_buffer[i];
+  }
+  return aux / (double)NUM_SAMPLES;
+}
  
 void setup(void)
 {
@@ -77,31 +115,41 @@ void loop(void)
   static bool stop_bool=false;
   static float angle=0.0f;
   if(!stop_bool){
-    
-    angle=get_angle()*180/PI;//read angle in degrees
+    setPoint = applyfilter(SETPOINT);
+    #ifdef PC_DEBUG
+    Serial.print("Setpoint:");
+    Serial.print(setPoint);
+    #endif
+    angle = get_filt_out(get_angle() * 180 / PI); //read angle in degrees
     output = computePID(angle);
+
+    #ifdef PC_DEBUG
+    //Serial.print("Output:");
+    //Serial.print(output);
+    //Serial.print(",");
+    //Serial.print("Angle:");
+    //Serial.print(angle);
+    //Serial.println();
+    #endif
+    
     if((int)output > VALUE){
       output=VALUE;
       clamped = true;
       #ifdef PC_DEBUG
-      Serial.println("Acotado a VALUE");
+      //Serial.println("Acotado a VALUE");
       #endif
     }
     else if(output < -VALUE){
       output=-VALUE;//50 es un buen numero para cuadrante 4
       clamped = true;
       #ifdef PC_DEBUG
-      Serial.println("Acotado a -VALUE");
+      //Serial.println("Acotado a -VALUE");
       #endif
     }
     else{
       clamped = false;
     }
     int aux=(int)(abs(output));
-    #ifdef PC_DEBUG
-      //Serial.print("aux: ");
-      //Serial.println((int)aux);
-    #endif
     if(output > 0){//primer y cuarto cuadrante
       if(!goingFoward){
         hb.H_Bridge_Set_Dir(H_FOWARD);//control the motor based on PID value
@@ -125,6 +173,9 @@ void loop(void)
         }
         #endif
       }
+    }
+    if(!goingFoward){
+      aux *= 2;
     }
     if(aux>VALUE){
       hb.H_Bridge_Set_Pwm(VALUE);  //3, 5, 6, 9, 10, 11
@@ -157,47 +208,41 @@ void loop(void)
 }
 
 float computePID(float inp){
-
+  double out = 0;
+  
   if(first_time){
     first_time=false;
     cumError=0;
-    cumRateError=0;
     previousTime=millis();
   }     
   currentTime = millis();                //get current time
   elapsedTime = (float)(currentTime - previousTime);        //compute time elapsed from previous computation
   
   error = setPoint - inp;                        // determine error
+  rateError = (error - lastError)/elapsedTime;
+  
   if(!(clamped && ((goingFoward && error>0)||(!goingFoward && error <0)))){
-    cumError += error * elapsedTime;               // compute integral with anti windup
+    if(inp > -180 && inp <= -30){
+      cumError += error * ki_1 * elapsedTime;               // compute integral with anti windup
+    }
+    else if (inp >-30 && inp <= 30){
+      cumError += error * ki_2 * elapsedTime;
+    }
+    else if (inp > 30 && inp < 180){
+      cumError += error * ki_3 * elapsedTime;
+    }
   }
 
-  //filteredError = applyfilter(error);
-  //rateError = (filteredError - lastError)/elapsedTime;
-  if(inp < SETPOINT+7 && inp > SETPOINT-7){
-    rateError = (error - lastError)/elapsedTime;
-   // Serial.print("YAAASS");
-  }
-  else{
-    rateError = 0;
-  }
-  
-  double out = kp*error + ki*cumError + kd*rateError;                //PID output          
-  #ifdef PC_DEBUG
-    //Serial.print("Proportional: ");
-    //Serial.println((kp*error));
-    //Serial.print("Integral: ");
-    //Serial.println((ki*cumError));
-    //Serial.print("Derivative: ");
-    //Serial.println((kd*rateError));
-   #endif    
-/*
-Serial.print("Deriv: ");
-Serial.print(rateError);
-Serial.print(" Angle: ");
-Serial.print(inp);
-Serial.print("\r\n");
-*/
+    if(inp > -180 && inp <= -30){
+      out = kp_1*error + cumError + kd_1*rateError;
+    }
+    else if (inp >-30 && inp <= 30){
+      out = kp_2*error + cumError*0.985 + kd_2*rateError;
+    }
+    else if (inp > 30 && inp < 180){
+      out = kp_3*error + cumError*0.975 + kd_3*rateError;
+    }
+
   lastError = error;                                //remember current error
   previousTime = currentTime;                        //remember current time
 
