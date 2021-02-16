@@ -4,7 +4,7 @@
 //#include <PID_AutoTune_v0.h>
 #define PC_DEBUG
 #define VALUE 70
-#define SETPOINT 160
+#define SETPOINT 135
 #define NPOLE 1
 #define NZERO 1
 
@@ -40,9 +40,9 @@ REAL applyfilter(REAL v)
 //double ki = 0.023;
 //double kd = 0.09;
 
-double kp = 0.9;
-double ki = 0.08;
-double kd = 0.4;
+double kp = 1.1;
+double ki = 0.3;
+double kd = 0.6;
 
 HBRIDGE hb;
 float input, output, setPoint;
@@ -56,7 +56,7 @@ double Setpoint, Input, Output;
 PID myPID(&Input, &Output, &Setpoint, kp, ki, kd, DIRECT);
 
 //PID_ATune aTune(&Input, &Output);
-#define NUM_SAMPLES 50
+#define NUM_SAMPLES 60
 double avg_buffer[NUM_SAMPLES];
 int pointer;
 
