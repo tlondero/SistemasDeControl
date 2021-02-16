@@ -8,6 +8,8 @@
 #define NPOLE 1
 #define NZERO 1
 #define ANGLE_OFFSET 1
+#define SAMPLE_TIME_IN_MS 5
+#define INITIAL_ANGLE 90
 
 typedef double REAL;
 REAL acoeff[]={-0.9964444320905282,1};
@@ -31,14 +33,19 @@ REAL applyfilter(REAL v)
 
 
 /* ultimos valores 15/2 */
-double kp = 1.1;
-double ki = 0.3;
-double kd = 0.6;
+/*double kp = 1.1;
+double ki = 0.3/(SAMPLE_TIME_IN_MS/5);
+double kd = 0.6*(SAMPLE_TIME_IN_MS/5);*/
+
+double kp = 1.12;
+double ki = 0.305/(SAMPLE_TIME_IN_MS/5);
+double kd = 0.7*(SAMPLE_TIME_IN_MS/5);
 
 HBRIDGE hb;
 float input, output, setPoint;
 bool clamped;
 bool stop_bool;
+unsigned long int prevTime, curTime, elapsedTime;
 
 double Setpoint, Input, Output;
 //                                    Kp, Ki, Kd
@@ -50,6 +57,13 @@ PID myPID(&Input, &Output, &Setpoint, kp, ki, kd, DIRECT);
 #define NUM_SAMPLES 60
 double avg_buffer[NUM_SAMPLES];
 int pointer;
+
+void init_buffer(void){
+  unsigned int i;
+  for(i=0;i<NUM_SAMPLES;i++){
+    avg_buffer[i]=INITIAL_ANGLE;
+  }
+}
 
 void add_to_buffer(double angle)
 {
@@ -75,6 +89,7 @@ void setup(void)
   Setpoint = SETPOINT;
 
   Serial.begin(115200);
+  init_buffer();
   init_mpu();
   hb.H_Bridge_Init(8, 7, 3); //Motor Plus, Minus and PWM
   stop_bool = false;
@@ -83,37 +98,45 @@ void setup(void)
   goingFoward = true;
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
-  myPID.SetSampleTime(5);
+  //myPID.SetSampleTime(SAMPLE_TIME_IN_MS);
+  prevTime = millis();
 }
 
 void loop(void)
 { 
   static float angle = 0.0f;
-  Setpoint = applyfilter(SETPOINT);
   angle = (get_angle() * 180 / PI); //read angle in degrees
   if(angle < 0){
     angle += 360.0;  
   }
   angle = get_filt_out(angle) + ANGLE_OFFSET;
   Input = angle;
-
-  myPID.Compute();
-  //Serial.print("Output: ");
-  //Serial.print(Output);
-  //Serial.print(", ");
-  Serial.print("Angulo: ");
-  Serial.println(angle);
-  
-  uint8_t aux = (uint8_t)abs(Output);
-  if (Output > 0)
-  {
-    hb.H_Bridge_Set_Dir(H_FOWARD);
-    digitalWrite(13, HIGH);
+  curTime = millis();
+  elapsedTime = curTime - prevTime;
+  if(elapsedTime >= SAMPLE_TIME_IN_MS){
+    myPID.SetSampleTime(elapsedTime);
+    Setpoint = applyfilter(SETPOINT);
+    myPID.Compute();
+    //Serial.print("Output: ");
+    //Serial.print(Output);
+    //Serial.print(", ");
+    //Serial.print("Angulo: ");
+    //Serial.println(angle);
+    //Serial.print("Time: ");
+    //Serial.println(elapsedTime);
+    
+    uint8_t aux = (uint8_t)abs(Output);
+    if (Output > 0)
+    {
+      hb.H_Bridge_Set_Dir(H_FOWARD);
+      digitalWrite(13, HIGH);
+    }
+    else
+    {
+      hb.H_Bridge_Set_Dir(H_BACKWARD);
+      digitalWrite(13, LOW);
+    }
+    hb.H_Bridge_Set_Pwm(aux);
+    prevTime = curTime;
   }
-  else
-  {
-    hb.H_Bridge_Set_Dir(H_BACKWARD);
-    digitalWrite(13, LOW);
-  }
-  hb.H_Bridge_Set_Pwm(aux);
 }
