@@ -11,8 +11,13 @@
 //double ki = 0; //0.00001;
 //double kd = 5; //0.01;
 
-double kp = 0.5;
-double ki = 0.023;
+//PARA 160 y 145
+//double kp = 0.5;
+//double ki = 0.023;
+//double kd = 0.09;
+
+double kp = 0.35;
+double ki = 0.035;
 double kd = 0.09;
 
 HBRIDGE hb;
