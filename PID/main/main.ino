@@ -1,11 +1,9 @@
 #include "angle.h"
 #include "H_Bridge.h"
 //#define PC_DEBUG
-#define VALUE 40
-#define NUM_SAMPLES 75
-#define NPOLE 1
-#define NZERO 1
-#define SETPOINT 10
+#define VALUE 70
+#define NUM_SAMPLES 100
+#define SETPOINT 135
 
 float computePID(float inp);
 
@@ -25,17 +23,9 @@ double kp_3 = 0.020000;
 double ki_3 = 0.000050; //arriba de 30
 double kd_3 = 2.955500;
 */
-double kp_1 = 0.00;
-double ki_1 = 0.00001; //abajo de 30
-double kd_1 = 0;
-
-double kp_2 = 0.001;
-double ki_2 = 0.00001; //-30 a 30
-double kd_2 = 0;
-
-double kp_3 = 0.5;
-double ki_3 = 0.00001; //arriba de 30
-double kd_3 = 0;
+double kp = 0.25;
+double ki = 0.0001; //abajo de 30
+double kd = 0.01;
 HBRIDGE hb;
 unsigned long currentTime, previousTime;
 float elapsedTime;
@@ -50,25 +40,7 @@ bool clamped;
 double avg_buffer[NUM_SAMPLES];
 int pointer;
 bool changedSetpoint;
-typedef double REAL;
-REAL acoeff[]={-0.9964444320905282,1};
-REAL bcoeff[]={1,1};
-REAL gain=562.4980455786416;
-REAL xv[]={-45.0,-45.0};
-REAL yv[]={-45.0,-45.0};
 
-REAL applyfilter(REAL v)
-{
-  int i;
-  REAL out=0;
-  for (i=0; i<NZERO; i++) {xv[i]=xv[i+1];}
-  xv[NZERO] = v/gain;
-  for (i=0; i<NPOLE; i++) {yv[i]=yv[i+1];}
-  for (i=0; i<=NZERO; i++) {out+=xv[i]*bcoeff[i];}
-  for (i=0; i<NPOLE; i++) {out-=yv[i]*acoeff[i];}
-  yv[NPOLE]=out;
-  return out;
-}
 
 void add_to_buffer(double angle)
 {
@@ -115,21 +87,19 @@ void loop(void)
   static bool stop_bool=false;
   static float angle=0.0f;
   if(!stop_bool){
-    setPoint = applyfilter(SETPOINT);
-    #ifdef PC_DEBUG
-    Serial.print("Setpoint:");
-    Serial.print(setPoint);
-    #endif
     angle = get_filt_out(get_angle() * 180 / PI); //read angle in degrees
+    if(angle < 0){
+      angle += 360.0;
+    }
     output = computePID(angle);
 
     #ifdef PC_DEBUG
-    //Serial.print("Output:");
-    //Serial.print(output);
-    //Serial.print(",");
-    //Serial.print("Angle:");
-    //Serial.print(angle);
-    //Serial.println();
+    Serial.print("Output:");
+    Serial.print(output);
+    Serial.print(",");
+    Serial.print("Angle:");
+    Serial.print(angle);
+    Serial.println();
     #endif
     
     if((int)output > VALUE){
@@ -157,7 +127,7 @@ void loop(void)
         #ifdef PC_DEBUG
         if(!((int)aux > ((int)old_aux-2) &&((int)aux < ((int)old_aux+2)) )){
           old_aux=aux;
-          Serial.print("Direction FORWARD\r\n");
+          //Serial.print("Direction FORWARD\r\n");
         }
         #endif
       }
@@ -169,7 +139,7 @@ void loop(void)
         #ifdef PC_DEBUG
         if(!((int)aux > ((int)old_aux-2) &&((int)aux < ((int)old_aux+2)) )){
           old_aux=aux;
-          Serial.print("Direction BACKWARD\r\n");
+          //Serial.print("Direction BACKWARD\r\n");
         }
         #endif
       }
@@ -221,27 +191,9 @@ float computePID(float inp){
   error = setPoint - inp;                        // determine error
   rateError = (error - lastError)/elapsedTime;
   
-  if(!(clamped && ((goingFoward && error>0)||(!goingFoward && error <0)))){
-    if(inp > -180 && inp <= -30){
-      cumError += error * ki_1 * elapsedTime;               // compute integral with anti windup
-    }
-    else if (inp >-30 && inp <= 30){
-      cumError += error * ki_2 * elapsedTime;
-    }
-    else if (inp > 30 && inp < 180){
-      cumError += error * ki_3 * elapsedTime;
-    }
-  }
-
-    if(inp > -180 && inp <= -30){
-      out = kp_1*error + cumError + kd_1*rateError;
-    }
-    else if (inp >-30 && inp <= 30){
-      out = kp_2*error + cumError*0.985 + kd_2*rateError;
-    }
-    else if (inp > 30 && inp < 180){
-      out = kp_3*error + cumError*0.975 + kd_3*rateError;
-    }
+  cumError += error * elapsedTime;               // compute integral with anti windup
+      
+  out = kp*error + ki*cumError + kd*rateError;
 
   lastError = error;                                //remember current error
   previousTime = currentTime;                        //remember current time
