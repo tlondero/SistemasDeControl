@@ -3,17 +3,17 @@
 #include <PID_v1.h>
 //#include <PID_AutoTune_v0.h>
 #define PC_DEBUG
-#define VALUE 55
-#define SETPOINT 90
+#define VALUE 70
+#define SETPOINT 160
 
 //Esto estaba de antes
 //double kp = 10;
 //double ki = 0; //0.00001;
 //double kd = 5; //0.01;
 
-double kp = 2;
-double ki = 1;
-double kd = 3.5;
+double kp = 0.5;
+double ki = 0.023;
+double kd = 0.09;
 
 HBRIDGE hb;
 float input, output, setPoint;
@@ -61,12 +61,16 @@ void setup(void)
   goingFoward = true;
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
+  myPID.SetSampleTime(5);
 }
 
 void loop(void)
-{
+{ 
   static float angle = 0.0f;
   angle = get_filt_out(get_angle() * 180 / PI); //read angle in degrees
+  if(angle < 0){
+    angle += 360.0;  
+  }
   Input = angle;
 
   myPID.Compute();
