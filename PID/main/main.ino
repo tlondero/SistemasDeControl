@@ -7,6 +7,7 @@
 #define SETPOINT 135
 #define NPOLE 1
 #define NZERO 1
+#define ANGLE_OFFSET 1
 
 typedef double REAL;
 REAL acoeff[]={-0.9964444320905282,1};
@@ -29,17 +30,7 @@ REAL applyfilter(REAL v)
 }
 
 
-
-//Esto estaba de antes
-//double kp = 10;
-//double ki = 0; //0.00001;
-//double kd = 5; //0.01;
-
-//PARA 160 y 145
-//double kp = 0.5;
-//double ki = 0.023;
-//double kd = 0.09;
-
+/* ultimos valores 15/2 */
 double kp = 1.1;
 double ki = 0.3;
 double kd = 0.6;
@@ -99,36 +90,30 @@ void loop(void)
 { 
   static float angle = 0.0f;
   Setpoint = applyfilter(SETPOINT);
-  angle = get_filt_out(get_angle() * 180 / PI); //read angle in degrees
+  angle = (get_angle() * 180 / PI); //read angle in degrees
   if(angle < 0){
     angle += 360.0;  
   }
+  angle = get_filt_out(angle) + ANGLE_OFFSET;
   Input = angle;
 
   myPID.Compute();
-  Serial.print("Output:");
-  Serial.print(Output);
-  Serial.print(",");
-  //output = computePID(angle);
-
-  Serial.print("Angulo:");
-  Serial.print(angle);
-  Serial.print(",");
-  Serial.print("direction:");
-  int static dir = 1;
+  //Serial.print("Output: ");
+  //Serial.print(Output);
+  //Serial.print(", ");
+  Serial.print("Angulo: ");
+  Serial.println(angle);
+  
   uint8_t aux = (uint8_t)abs(Output);
   if (Output > 0)
   {
     hb.H_Bridge_Set_Dir(H_FOWARD);
     digitalWrite(13, HIGH);
-    dir = 20;
   }
   else
   {
     hb.H_Bridge_Set_Dir(H_BACKWARD);
     digitalWrite(13, LOW);
-    dir = -20;
   }
   hb.H_Bridge_Set_Pwm(aux);
-  Serial.println(dir);
 }
