@@ -51,7 +51,7 @@ class PID
     void SetSampleTime(int);              // * sets the frequency, in Milliseconds, with which 
                                           //   the PID calculation is performed.  default is 100
 										  
-										  
+	void SetIntegralError(double);
 										  
   //Display functions ****************************************************************
 	double GetKp();						  // These functions query the pid for interal values.

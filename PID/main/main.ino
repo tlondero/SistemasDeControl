@@ -3,7 +3,7 @@
 #include <PID_v1.h>
 //#include <PID_AutoTune_v0.h>
 #define PC_DEBUG
-#define VALUE 70
+#define VALUE 80
 #define SETPOINT 135
 #define NPOLE 1
 #define NZERO 1
@@ -38,8 +38,9 @@ double ki = 0.3/(SAMPLE_TIME_IN_MS/5);
 double kd = 0.6*(SAMPLE_TIME_IN_MS/5);*/
 
 double kp = 1.12;
-double ki = 0.305/(SAMPLE_TIME_IN_MS/5);
-double kd = 0.7*(SAMPLE_TIME_IN_MS/5);
+double ki = 1.705/(SAMPLE_TIME_IN_MS/5);
+double kd = 0.575*(SAMPLE_TIME_IN_MS/5);
+
 
 HBRIDGE hb;
 float input, output, setPoint;
@@ -54,7 +55,7 @@ double Setpoint, Input, Output;
 PID myPID(&Input, &Output, &Setpoint, kp, ki, kd, DIRECT);
 
 //PID_ATune aTune(&Input, &Output);
-#define NUM_SAMPLES 60
+#define NUM_SAMPLES 40
 double avg_buffer[NUM_SAMPLES];
 int pointer;
 
@@ -92,6 +93,8 @@ void setup(void)
   init_buffer();
   init_mpu();
   hb.H_Bridge_Init(8, 7, 3); //Motor Plus, Minus and PWM
+  hb.H_Bridge_Set_Dir(H_FOWARD);
+  digitalWrite(13, HIGH);
   stop_bool = false;
   myPID.SetMode(AUTOMATIC); //AUTOMATIC);
   myPID.SetOutputLimits(-VALUE, VALUE);
@@ -99,20 +102,21 @@ void setup(void)
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
   //myPID.SetSampleTime(SAMPLE_TIME_IN_MS);
+  myPID.SetIntegralError(65);
   prevTime = millis();
 }
 
 void loop(void)
 { 
   static float angle = 0.0f;
+  curTime = millis();
+  elapsedTime = curTime - prevTime;
   angle = (get_angle() * 180 / PI); //read angle in degrees
   if(angle < 0){
     angle += 360.0;  
   }
   angle = get_filt_out(angle) + ANGLE_OFFSET;
   Input = angle;
-  curTime = millis();
-  elapsedTime = curTime - prevTime;
   if(elapsedTime >= SAMPLE_TIME_IN_MS){
     myPID.SetSampleTime(elapsedTime);
     Setpoint = applyfilter(SETPOINT);
@@ -120,8 +124,8 @@ void loop(void)
     //Serial.print("Output: ");
     //Serial.print(Output);
     //Serial.print(", ");
-    //Serial.print("Angulo: ");
-    //Serial.println(angle);
+    Serial.print("Angulo:");
+    Serial.println(angle);
     //Serial.print("Time: ");
     //Serial.println(elapsedTime);
     
