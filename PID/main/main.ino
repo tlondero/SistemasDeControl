@@ -5,6 +5,30 @@
 #define PC_DEBUG
 #define VALUE 70
 #define SETPOINT 160
+#define NPOLE 1
+#define NZERO 1
+
+typedef double REAL;
+REAL acoeff[]={-0.9964444320905282,1};
+REAL bcoeff[]={1,1};
+REAL gain=562.4980455786416;
+REAL xv[]={45.0,45.0};
+REAL yv[]={45.0,45.0};
+
+REAL applyfilter(REAL v)
+{
+  int i;
+  REAL out=0;
+  for (i=0; i<NZERO; i++) {xv[i]=xv[i+1];}
+  xv[NZERO] = v/gain;
+  for (i=0; i<NPOLE; i++) {yv[i]=yv[i+1];}
+  for (i=0; i<=NZERO; i++) {out+=xv[i]*bcoeff[i];}
+  for (i=0; i<NPOLE; i++) {out-=yv[i]*acoeff[i];}
+  yv[NPOLE]=out;
+  return out;
+}
+
+
 
 //Esto estaba de antes
 //double kp = 10;
@@ -16,9 +40,9 @@
 //double ki = 0.023;
 //double kd = 0.09;
 
-double kp = 0.35;
-double ki = 0.035;
-double kd = 0.09;
+double kp = 0.9;
+double ki = 0.08;
+double kd = 0.4;
 
 HBRIDGE hb;
 float input, output, setPoint;
@@ -56,7 +80,9 @@ double get_filt_out(double angle)
 bool goingFoward;
 void setup(void)
 {
+
   Setpoint = SETPOINT;
+
   Serial.begin(115200);
   init_mpu();
   hb.H_Bridge_Init(8, 7, 3); //Motor Plus, Minus and PWM
@@ -72,6 +98,7 @@ void setup(void)
 void loop(void)
 { 
   static float angle = 0.0f;
+  Setpoint = applyfilter(SETPOINT);
   angle = get_filt_out(get_angle() * 180 / PI); //read angle in degrees
   if(angle < 0){
     angle += 360.0;  
