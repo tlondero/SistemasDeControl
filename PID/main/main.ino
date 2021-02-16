@@ -5,6 +5,7 @@
 #define PC_DEBUG
 #define VALUE 80
 #define SETPOINT 135
+//#define SETPOINT 45
 #define NPOLE 1
 #define NZERO 1
 #define ANGLE_OFFSET 1
@@ -37,8 +38,8 @@ REAL applyfilter(REAL v)
 double ki = 0.3/(SAMPLE_TIME_IN_MS/5);
 double kd = 0.6*(SAMPLE_TIME_IN_MS/5);*/
 
-double kp = 1.12;
-double ki = 1.705/(SAMPLE_TIME_IN_MS/5);
+double kp = 1.42;
+double ki = 3.305/(SAMPLE_TIME_IN_MS/5);
 double kd = 0.575*(SAMPLE_TIME_IN_MS/5);
 
 
@@ -102,7 +103,7 @@ void setup(void)
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
   //myPID.SetSampleTime(SAMPLE_TIME_IN_MS);
-  myPID.SetIntegralError(65);
+  myPID.SetIntegralError(80);
   prevTime = millis();
 }
 
@@ -139,6 +140,7 @@ void loop(void)
     {
       hb.H_Bridge_Set_Dir(H_BACKWARD);
       digitalWrite(13, LOW);
+      aux=aux*2;
     }
     hb.H_Bridge_Set_Pwm(aux);
     prevTime = curTime;
