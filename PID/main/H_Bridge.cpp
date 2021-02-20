@@ -3,7 +3,7 @@
 #import <Arduino.h>
 //#include <Wire.h>
 
-#define MAX_PWM 140 //7V con 12V alimentacion
+#define MAX_PWM 150 //7V con 12V alimentacion
 	
 void HBRIDGE::H_Bridge_Init(int in_plus_, int in_minus_, int enb_pwm_)
 {
