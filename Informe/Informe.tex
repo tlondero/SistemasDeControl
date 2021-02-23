@@ -1,0 +1,179 @@
+\input{Header.tex}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%		Caratula		%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{Caratula.tex}
+
+%%%%%%%%%%%%%%%%%%%%%
+%		Indice		%
+%%%%%%%%%%%%%%%%%%%%%
+
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%
+%		Informe		%
+%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Introducción}
+
+En el siguiente informe se presenta el análisis y desarrollo de un péndulo el cual se estabiliza a $45^o$ por encima de la recta horizontal. Este es accionado por un sistema de motor de continua más hélice. La retroalimentación se realiza por medio de un acelerómetro montado cerca del pivote del péndulo.
+
+Cabe aclarar que al momento de realizar el trabajo, se plantearon ciertas condiciones, a modo de objetivo, entre las cuales se propuso utilizar elementos que se encontraran al alcance del grupo. Para ello se empleó un motor y hélice de un dron, un Arduino Nano, un acelerómetro MPU6050 y un modulo de puente H L298N.
+
+\section{Modelado Físico}
+Para el modelado físico se toma en cuenta al ventilador como un objeto puntual, el cual se puede mover únicamente en el versor tangencial dado que el mismo palo restringe el movimiento en los otros versores.\\
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./Imagenes/y_el_trozzo.png}
+    \caption{Diagrama de la planta.}
+    \label{fig:Sys}
+\end{figure}
+
+Se plantea el versor tangencial:
+\begin{equation}
+    \hat{t}: \\ mg\cdot \cos{(\theta)}=\frac{\partial P}{\partial t}
+         \end{equation}
+     
+     \begin{equation}
+    mg\cdot \cos{(\theta)}=v\cdot \frac{\partial m}{\partial t} + m \frac{\partial v}{\partial t}
+         \end{equation}
+     
+     \begin{equation}
+     mg\cdot \cos{(\theta)}-v\cdot \frac{\partial m}{\partial t} = m\cdot a
+     \end{equation}
+     
+     \begin{equation}
+     mg\cdot \cos{(\theta)}-\left( v_t - v_f\right)^2 \cdot \frac{\rho C_d A}{2}=m\cdot a\\
+\end{equation}
+Donde $\rho$ es la densidad del fluido, en este caso del aire, $C_d$ es el coeficiente de arrastre, $A$ es el área por la cual atraviesa el flujo de aire, $v_t$ es la velocidad tangencial del ventilador respecto de la mesa, y $v_f$ es la velocidad del aire expulsado gracias la rotación de las aspas.\\
+Además sabiendo las siguientes relaciones:
+\begin{equation}
+    v_t=R\cdot \omega \ \ \ \ \ \ \ \ v_f = R_f\cdot \omega_f(t) \ \ \ \ \ \ \ \ \omega \cdot R = \dot{\theta} \ \ \ \ \ \ \ \  \alpha\cdot R = \ddot{\theta}
+\end{equation}
+Donde $R$ es el radio desde el pivote al ventilador, y $R_f$ el radio de las aspas, $\omega_f$ es la función de giro del ventilador.
+\begin{equation}
+     mg\cdot \cos{(\theta)}-\left( R\cdot \dot{\theta} - R_f \cdot \omega_f\right)^2 \cdot \frac{\rho C_d A}{2}=mR\cdot \ddot{\theta}\\
+\end{equation}
+Aquí se llega a una expresión del sistema, en el cual debido a la elección de actuador y sensor, se obtiene $\omega_f$ el cual será modificada por el actuador, y $\theta$ el cual es medido por el sensor.\\
+Si se toman las siguientes aproximaciones:
+\begin{equation} 
+\left( R\cdot \dot{\theta} - R_f\cdot \omega_f \right)^2 \approx R\cdot \dot{\theta} - R_f\cdot \omega_f \ \ \ \ \ \ \ \ \cos{(\theta)}\approx \frac{\sqrt{2}}{2}
+\end{equation}
+se puede aproximar de la siguiente manera.
+
+\begin{huge}
+\begin{center}
+	$\stackrel{\mathcal{L}}{\approx}$
+\end{center}
+\end{huge}
+
+\begin{equation}
+mg\frac{\sqrt{2}}{2} \delta(s) - \left( R\cdot s\theta(s) - R_f \omega_f(s) \right)\cdot \frac{\rho C_d A}{2} = m\cdot s^2\theta(s)   
+\end{equation}
+Aqui se puede apreciar que se puede estimar una transferencia lineal si se ignora el término gravitatorio, el cual tendrá 2 polos. Donde $\theta$ es la salida y $\omega_f$ es la entrada
+
+\section{Implementación}
+
+La arquitectura de control utilizada se observa en la Figura (\ref{fig:controlsys}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.1\textwidth]{./Imagenes/controlsystem.png}
+    \caption{Diagrama del sistema de control.}
+    \label{fig:controlsys}
+\end{figure}
+
+
+Mientras que el hardware se conectó según la Figura (\ref{fig:hardwaresys}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./Imagenes/hardwaresystem.png}
+    \caption{Diagrama del conexionado de hardware.}
+    \label{fig:hardwaresys}
+\end{figure}
+
+Como punto de partida, se midió la respuesta del sistema a lazo cerrado con baja ganancia, observando que este se estabilizaba en cierto punto, pero con un error permanente grande. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/kplow.png}
+    \caption{Respuesta al escalón del controlador proporcional. Setpoint en curva azul y ángulo en curva naranja.}
+    \label{fig:kplow}
+\end{figure}
+
+Si bien este sistema se estabilizaba frente a una respuesta al escalón, frente a un disturbio se tornaba inestable como se observa en la Figura (\ref{fig:kpdist}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/kpdist.png}
+    \caption{Respuesta a disturbio del controlador proporcional. Setpoint en curva azul y ángulo en curva naranja.}
+    \label{fig:kpdist}
+\end{figure}
+
+Por esto, se agregó control derivativo para estabilizar al sistema frente disturbios. Esto exageró significativamente el ruido del acelerómetro debido a que las vibraciones inducidas por el motor producían ruido que tras pasar por el derivador provocaban más vibraciones en el motor. Para reducir este efecto, se utilizó un filtro de media móvil. Con esto, el sistema se tornó estable frente a disturbios.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/kddist.png}
+    \caption{Respuesta a disturbio del controlador proporcional derivativo. Setpoint en curva azul y ángulo en curva naranja.}
+    \label{fig:kddist}
+\end{figure}
+
+Sin embargo, el sistema aún poseía gran error permanente. Se agregó control integral con anti-windup para mitigar el error permanente quedando así la respuesta como se observa en la Figura (\ref{fig:ki}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/ki.png}
+    \caption{Respuesta al escalón del controlador PID. Setpoint en curva azul y ángulo en curva naranja.}
+    \label{fig:ki}
+\end{figure}
+
+Esta respuesta era demasiado oscilatoria, por lo que se colocó un prefiltro lo cual arregló este problema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/pidcompleto.png}
+    \caption{Respuesta al escalón del controlador PID con prefiltro. Setpoint en curva azul y ángulo en curva naranja.}
+    \label{fig:pidcompleto}
+\end{figure}
+
+Quedando así finalmente la respuesta frente a un disturbio como se observa en la Figura (\ref{fig:piddist}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/piddist.png}
+    \caption{Respuesta a disturbio del controlador PID con prefiltro. Setpoint en curva azul y ángulo en curva naranja.}
+    \label{fig:piddist}
+\end{figure}
+
+Finalmente, en las Figuras (\ref{fig:comptrans}) y (\ref{fig:compdist}) se puede observar una comparación entre las respuestas al escalón y las respuestas a disturbios.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/comptrans.png}
+    \caption{Comparación entre las respuestas al escalón de los distintos controladores.}
+    \label{fig:comptrans}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{./Imagenes/compdist.png}
+    \caption{Comparación entre las respuestas a disturbio de los distintos controladores.}
+    \label{fig:compdist}
+\end{figure}
+
+Finalmente, los valores de las sensibilidades quedaron $Kp = 0.55$, $Ki = 3\cdot dt$ y $Kd = \frac{0.45}{dt}$ ajustados a frecuencia de sampleo genérica. Para el prefiltro se utilizó un filtro IIR de primer orden con frecuencia de corte de $65Hz$. El filtro de media móvil es de 40 samples.
+
+\section{Código}
+Luego se presenta el codigo implementador para realizar el control:
+    \lstinputlisting[language=C]{main.cpp}
+
+\end{document}
