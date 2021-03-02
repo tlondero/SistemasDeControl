@@ -85,7 +85,7 @@ La arquitectura de control utilizada se observa en la Figura (\ref{fig:controlsy
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1.1\textwidth]{./Imagenes/controlsystem.png}
+    \includegraphics[width=\textwidth]{./Imagenes/controlsystem.png}
     \caption{Diagrama del sistema de control.}
     \label{fig:controlsys}
 \end{figure}
@@ -104,7 +104,7 @@ Como punto de partida, se midió la respuesta del sistema a lazo cerrado con baj
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/kplow.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/kplow.png}
     \caption{Respuesta al escalón del controlador proporcional. Setpoint en curva azul y ángulo en curva naranja.}
     \label{fig:kplow}
 \end{figure}
@@ -113,7 +113,7 @@ Si bien este sistema se estabilizaba frente a una respuesta al escalón, frente 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/kpdist.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/kpdist.png}
     \caption{Respuesta a disturbio del controlador proporcional. Setpoint en curva azul y ángulo en curva naranja.}
     \label{fig:kpdist}
 \end{figure}
@@ -122,7 +122,7 @@ Por esto, se agregó control derivativo para estabilizar al sistema frente distu
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/kddist.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/kddist.png}
     \caption{Respuesta a disturbio del controlador proporcional derivativo. Setpoint en curva azul y ángulo en curva naranja.}
     \label{fig:kddist}
 \end{figure}
@@ -131,7 +131,7 @@ Sin embargo, el sistema aún poseía gran error permanente. Se agregó control i
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/ki.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/ki.png}
     \caption{Respuesta al escalón del controlador PID. Setpoint en curva azul y ángulo en curva naranja.}
     \label{fig:ki}
 \end{figure}
@@ -140,7 +140,7 @@ Esta respuesta era demasiado oscilatoria, por lo que se colocó un prefiltro lo 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/pidcompleto.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/pidcompleto.png}
     \caption{Respuesta al escalón del controlador PID con prefiltro. Setpoint en curva azul y ángulo en curva naranja.}
     \label{fig:pidcompleto}
 \end{figure}
@@ -149,7 +149,7 @@ Quedando así finalmente la respuesta frente a un disturbio como se observa en l
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/piddist.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/piddist.png}
     \caption{Respuesta a disturbio del controlador PID con prefiltro. Setpoint en curva azul y ángulo en curva naranja.}
     \label{fig:piddist}
 \end{figure}
@@ -158,14 +158,14 @@ Finalmente, en las Figuras (\ref{fig:comptrans}) y (\ref{fig:compdist}) se puede
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/comptrans.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/comptrans.png}
     \caption{Comparación entre las respuestas al escalón de los distintos controladores.}
     \label{fig:comptrans}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{./Imagenes/compdist.png}
+    \includegraphics[width=0.8\textwidth]{./Imagenes/compdist.png}
     \caption{Comparación entre las respuestas a disturbio de los distintos controladores.}
     \label{fig:compdist}
 \end{figure}
